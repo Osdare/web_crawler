@@ -96,10 +96,10 @@ func NormalizeURL(rawURL string) (string, error) {
 	}
 
 	if u.Host == "" {
-		return "", fmt.Errorf("urls has no field 'Host'")
+		return "", fmt.Errorf("url has no field 'Host'")
 	}
 
-	//Scheme
+	//Remove redundant port.
 	if u.Scheme == "http" {
 		u.Host = strings.Replace(u.Host, ":80", "", 1)
 	}
@@ -108,19 +108,12 @@ func NormalizeURL(rawURL string) (string, error) {
 		u.Host = strings.Replace(u.Host, ":443", "", 1)
 	}
 
-	//Host
 	u.Host = strings.ToLower(u.Host)
 	u.Host = strings.TrimPrefix(u.Host, "www.")
 
-	//Path
 	u.Path = removeDotSegments(u.Path)	
 
-	if u.Path == "" {
-		u.Path = "/"
-	}
-
-	//RawPath
-	//Make sure all octets are upper case (%2a -> %2A)
+	//Make sure all octets are upper case (%2a -> %2A).
 	rp := u.RawPath
 	start := 0
 	for {
@@ -140,6 +133,7 @@ func NormalizeURL(rawURL string) (string, error) {
 	}
 	u.RawPath = rp
 
+	//Replace unreserved octets with corresponding characters.
 	var oldNew []string
 	for old, new := range octetsMap {
 		oldNew = append(oldNew, old, new)
@@ -147,7 +141,7 @@ func NormalizeURL(rawURL string) (string, error) {
 	replacer := strings.NewReplacer(oldNew...)
 	u.RawPath = replacer.Replace(u.RawPath)
 
-	//Query
+	//Sort query.
 	query := u.Query()
 	if len(query) > 0 {
 		keys := make([]string, 0, len(query))
@@ -162,7 +156,6 @@ func NormalizeURL(rawURL string) (string, error) {
 		u.RawQuery = sortedQuery.Encode()
 	}
 
-	//Fragment
 	u.Fragment = ""
 
 	return u.String(), nil
