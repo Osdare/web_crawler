@@ -40,3 +40,70 @@ func TestAddDomainGetDomain(t *testing.T) {
 		t.Error("domains are not equal ", domain, dbDomain )
 	}
 }
+
+func TestUrlQueue(t *testing.T) {
+	tesurls := []string{
+		"google.com/oogabooga",
+		"x.com/nooo",
+		"instagram.com/shit",
+		"instagram.com/shit",
+		"instagram.com/shit",
+		"example.ax/fisk",
+	}
+
+	db := DataBase{}
+	err := db.Connect()
+	if err != nil {
+		t.Errorf("could not connect to db %v", err)
+	}
+
+	for _, url := range tesurls {
+		err = db.PushUrl(url)
+		if err != nil {
+			t.Errorf("could not push url %v %v", url, err)
+		}
+
+	}
+
+	length, err := db.UrlQueueLength()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if length != 4 {
+		t.Errorf("expected 4 got %d", length)
+	}
+
+	//ADD a url to the db and then try to re-add it to the queue
+
+	url, err := db.PopUrl()
+	if err != nil {
+		t.Error(err)
+	}
+
+	urlPage := types.Page{
+		NormUrl: url,
+		Content: "i am a random piece of html",
+	}
+
+	err = db.AddPage(urlPage)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = db.PushUrl(url)
+	if err != nil {
+		t.Error(err)
+	}
+
+	length, err = db.UrlQueueLength()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if length != 3 {
+		t.Errorf("length was %d expected 3", length)
+	}
+
+
+}

@@ -144,6 +144,15 @@ func (db *DataBase) UpdateDomainLastCrawled(domain string, lastCrawled int) erro
 
 //Queue stuff
 func (db *DataBase) PushUrl(normUrl string) error {
+	exists, err := db.PageExists(normUrl) 
+	if err != nil {
+		return fmt.Errorf("%v", err)
+	}
+	if exists {
+		//Silent fail
+		return nil
+	}
+
 	res, err := db.client.SAdd(db.ctx, "urlset", normUrl).Result()
 	if err != nil {
 		return fmt.Errorf("could not add url %v to set %v", normUrl, err)
@@ -167,7 +176,19 @@ func (db *DataBase) PopUrl() (string, error) {
 		return "", fmt.Errorf("urlqueue could not be popped %v", err)
 	}
 
-	db.client.SRem(db.ctx, "urlset", res[1])
+	err = db.client.SRem(db.ctx, "urlset", res[1]).Err()
+	if err != nil {
+		return "", fmt.Errorf("could not remove %v from urlset %v", res[1], err)
+	}
 
 	return res[1], nil
+}
+
+func (db *DataBase) UrlQueueLength() (int64, error) {
+	res, err := db.client.LLen(db.ctx, "urlqueue").Result()
+	if err != nil {
+		return 0, fmt.Errorf("could not retrieve length of urlqueue %v", err)
+	}
+
+	return res, nil
 }
