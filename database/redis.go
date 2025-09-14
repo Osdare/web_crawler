@@ -4,15 +4,15 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"os"
 	"strconv"
 	"web_crawler/types"
-	"github.com/redis/go-redis/v9"
 )
 
 type DataBase struct {
 	client *redis.Client
-	ctx context.Context 
+	ctx    context.Context
 }
 
 const pageTag = "page"
@@ -23,17 +23,16 @@ func (db *DataBase) Connect() error {
 	database := os.Getenv("REDIS_DB")
 	password := os.Getenv("REDIS_PASSWORD")
 
-	
-	dbId, err := strconv.Atoi(database);
+	dbId, err := strconv.Atoi(database)
 	if err != nil {
 		return err
 	}
-	
+
 	db.client = redis.NewClient(&redis.Options{
-		Addr: addr,
-		DB: dbId, 
+		Addr:     addr,
+		DB:       dbId,
 		Password: password,
- 	})
+	})
 
 	db.ctx = context.Background()
 
@@ -43,10 +42,10 @@ func (db *DataBase) Connect() error {
 	}
 
 	return nil
-} 
+}
 
 func (db *DataBase) PageExists(normPageUrl string) (bool, error) {
-	res, err := db.client.Exists(db.ctx, pageTag + ":" + normPageUrl).Result()
+	res, err := db.client.Exists(db.ctx, pageTag+":"+normPageUrl).Result()
 	if err != nil {
 		return false, err
 	}
@@ -78,7 +77,7 @@ func (db *DataBase) AddPage(page types.Page) error {
 		"content", page.Content,
 	}
 
-	err = db.client.HSet(db.ctx, pageTag + ":" + page.NormUrl, hashFields).Err()
+	err = db.client.HSet(db.ctx, pageTag+":"+page.NormUrl, hashFields).Err()
 	if err != nil {
 		return fmt.Errorf("could not add page to db %v", err)
 	}
@@ -88,7 +87,7 @@ func (db *DataBase) AddPage(page types.Page) error {
 
 func (db *DataBase) AddDomain(domain types.Domain) error {
 	crawlDelay := strconv.Itoa(domain.CrawlDelay)
-	lastCrawled := strconv.Itoa(domain.LastCrawled)	
+	lastCrawled := strconv.Itoa(domain.LastCrawled)
 	disallowed := strconv.FormatBool(domain.Disallowed)
 
 	hashFields := []string{
@@ -97,24 +96,24 @@ func (db *DataBase) AddDomain(domain types.Domain) error {
 		"disallowed", disallowed,
 	}
 
-	err := db.client.HSet(db.ctx, domainTag + ":" + domain.Name, hashFields).Err()
+	err := db.client.HSet(db.ctx, domainTag+":"+domain.Name, hashFields).Err()
 	if err != nil {
 		return fmt.Errorf("could not add domain %v to database %v", domain.Name, err)
 	}
 
-	return nil	
+	return nil
 }
 
 func (db *DataBase) GetDomain(domainName string) (types.Domain, error) {
 
-	res, err := db.client.HGetAll(db.ctx, domainTag + ":" + domainName).Result()
+	res, err := db.client.HGetAll(db.ctx, domainTag+":"+domainName).Result()
 	if err != nil {
 		return types.Domain{}, fmt.Errorf("could not get domain %v %v", domainName, err)
 	}
 
 	crawlDelay, err := strconv.Atoi(res["crawldelay"])
 	if err != nil {
-		return types.Domain{}, fmt.Errorf("crawldelay could not be converted to int %v %v",res["crawldelay"], err)
+		return types.Domain{}, fmt.Errorf("crawldelay could not be converted to int %v %v", res["crawldelay"], err)
 	}
 
 	lastCrawled, err := strconv.Atoi(res["lastcrawled"])
@@ -125,16 +124,16 @@ func (db *DataBase) GetDomain(domainName string) (types.Domain, error) {
 	disallowed := res["disallowed"] == "true"
 
 	return types.Domain{
-		Name: domainName,
-		CrawlDelay: crawlDelay,
+		Name:        domainName,
+		CrawlDelay:  crawlDelay,
 		LastCrawled: lastCrawled,
-		Disallowed: disallowed,
+		Disallowed:  disallowed,
 	}, nil
 }
 
 func (db *DataBase) UpdateDomainLastCrawled(domain string, lastCrawled int) error {
 
-	err := db.client.HSet(db.ctx, domainTag + ":" + domain, "lastcrawled", lastCrawled).Err()
+	err := db.client.HSet(db.ctx, domainTag+":"+domain, "lastcrawled", lastCrawled).Err()
 	if err != nil {
 		return fmt.Errorf("could not update lastcrawled for domain: %v %v", domain, err)
 	}
@@ -142,9 +141,9 @@ func (db *DataBase) UpdateDomainLastCrawled(domain string, lastCrawled int) erro
 	return nil
 }
 
-//Queue stuff
+// Queue stuff
 func (db *DataBase) PushUrl(normUrl string) error {
-	exists, err := db.PageExists(normUrl) 
+	exists, err := db.PageExists(normUrl)
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}

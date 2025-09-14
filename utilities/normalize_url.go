@@ -111,7 +111,7 @@ func NormalizeURL(rawURL string) (string, error) {
 	u.Host = strings.ToLower(u.Host)
 	u.Host = strings.TrimPrefix(u.Host, "www.")
 
-	u.Path = removeDotSegments(u.Path)	
+	u.Path = removeDotSegments(u.Path)
 
 	//Make sure all octets are upper case (%2a -> %2A).
 	rp := u.RawPath
