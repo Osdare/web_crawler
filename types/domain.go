@@ -4,5 +4,6 @@ type Domain struct {
 	Name        string
 	CrawlDelay  int
 	LastCrawled int
-	Disallowed  bool
+	Allowed     []string
+	Disallowed  []string
 }

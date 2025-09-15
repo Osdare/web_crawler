@@ -88,17 +88,29 @@ func (db *DataBase) AddPage(page types.Page) error {
 func (db *DataBase) AddDomain(domain types.Domain) error {
 	crawlDelay := strconv.Itoa(domain.CrawlDelay)
 	lastCrawled := strconv.Itoa(domain.LastCrawled)
-	disallowed := strconv.FormatBool(domain.Disallowed)
 
 	hashFields := []string{
 		"crawldelay", crawlDelay,
 		"lastcrawled", lastCrawled,
-		"disallowed", disallowed,
 	}
 
 	err := db.client.HSet(db.ctx, domainTag+":"+domain.Name, hashFields).Err()
 	if err != nil {
 		return fmt.Errorf("could not add domain %v to database %v", domain.Name, err)
+	}
+
+	if len(domain.Allowed) > 0 {
+		err = db.client.SAdd(db.ctx, domainTag+":"+domain.Name+":"+"allowed", domain.Allowed).Err()
+		if err != nil {
+			return fmt.Errorf("could not add allowed to set of domain: %v %v", domain.Name, err)
+		}
+	}
+
+	if len(domain.Disallowed) > 0 {
+		err = db.client.SAdd(db.ctx, domainTag+":"+domain.Name+":"+"disallowed", domain.Disallowed).Err()
+		if err != nil {
+			return fmt.Errorf("could not add disallowed to set of domain: %v %v", domain.Disallowed, err)
+		}
 	}
 
 	return nil
@@ -121,12 +133,21 @@ func (db *DataBase) GetDomain(domainName string) (types.Domain, error) {
 		return types.Domain{}, fmt.Errorf("lastcrawled could not be converted to int %v %v", res["lastcrawled"], err)
 	}
 
-	disallowed := res["disallowed"] == "true"
+	allowed, err := db.client.SMembers(db.ctx, domainTag+":"+domainName+":"+"allowed").Result()
+	if err != nil {
+		return types.Domain{}, fmt.Errorf("could not retrieve allowed for domain: %v %v", domainName, err)
+	}
+
+	disallowed, err := db.client.SMembers(db.ctx, domainTag+":"+domainName+":"+"disallowed").Result()
+	if err != nil {
+		return types.Domain{}, fmt.Errorf("could not retrieve disallowed for domain: %v %v", domainName, err)
+	}
 
 	return types.Domain{
 		Name:        domainName,
 		CrawlDelay:  crawlDelay,
 		LastCrawled: lastCrawled,
+		Allowed:     allowed,
 		Disallowed:  disallowed,
 	}, nil
 }

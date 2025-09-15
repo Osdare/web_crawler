@@ -23,7 +23,8 @@ func TestAddDomainGetDomain(t *testing.T) {
 		Name:        "google.com",
 		CrawlDelay:  10,
 		LastCrawled: int(time.Now().Unix()),
-		Disallowed:  true,
+		Allowed:     []string{},
+		Disallowed:  []string{},
 	}
 
 	err = db.AddDomain(domain)
@@ -105,4 +106,5 @@ func TestUrlQueue(t *testing.T) {
 		t.Errorf("length was %d expected 3", length)
 	}
 
+	db.client.FlushAll(db.ctx)
 }
