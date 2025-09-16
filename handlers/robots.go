@@ -4,13 +4,139 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 	"web_crawler/types"
 )
 
-func DownloadRobots(domainName string) ([]string, error) {
+type RuleType int
+
+const (
+	RuleAllow RuleType = iota
+	RuleDisallow
+)
+
+type Rule struct {
+	Pattern    string
+	ruleType   RuleType
+	regex      *regexp.Regexp
+	patternLen int
+}
+
+type RuleSet struct {
+	Allow    []*Rule
+	Disallow []*Rule
+}
+
+func newRule(pattern string, rtype RuleType) (*Rule, error) {
+	var sb strings.Builder
+	special := ".^$+?{}[]\\|()"
+	for _, c := range pattern {
+		switch c {
+		case '*':
+			sb.WriteString(".*")
+		case '$':
+			sb.WriteString("$")
+		default:
+			if strings.ContainsRune(special, c) {
+				sb.WriteByte('\\')
+			}
+			sb.WriteRune(c)
+		}
+	}
+	escaped := sb.String()
+	regexPattern := "^" + escaped
+
+	re, err := regexp.Compile(regexPattern)
+	if err != nil {
+		return nil, err
+	}
+	return &Rule{
+		Pattern:    pattern,
+		ruleType:   rtype,
+		regex:      re,
+		patternLen: len(pattern),
+	}, nil
+}
+
+func newRuleSet(allowPatterns, disallowPatterns []string) (*RuleSet, error) {
+	rs := &RuleSet{}
+	for _, p := range allowPatterns {
+		r, err := newRule(p, RuleAllow)
+		if err != nil {
+			return nil, err
+		}
+		rs.Allow = append(rs.Allow, r)
+	}
+	for _, p := range disallowPatterns {
+		r, err := newRule(p, RuleDisallow)
+		if err != nil {
+			return nil, err
+		}
+		rs.Disallow = append(rs.Disallow, r)
+	}
+	return rs, nil
+}
+
+func (rs *RuleSet) isAllowed(rawurl string) bool {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		return false
+	}
+
+	pathAndQuery := u.Path
+	if u.RawQuery != "" {
+		pathAndQuery += "?" + u.RawQuery
+	}
+
+	type match struct {
+		ruleType   RuleType
+		patternLen int
+	}
+	matches := []match{}
+
+	for _, r := range rs.Allow {
+		if r.regex.MatchString(pathAndQuery) {
+			matches = append(matches, match{ruleType: RuleAllow, patternLen: r.patternLen})
+		}
+	}
+	for _, r := range rs.Disallow {
+		if r.regex.MatchString(pathAndQuery) {
+			matches = append(matches, match{ruleType: RuleDisallow, patternLen: r.patternLen})
+		}
+	}
+
+	if len(matches) == 0 {
+		return true
+	}
+
+	best := matches[0]
+	for _, m := range matches[1:] {
+		if m.patternLen > best.patternLen {
+			best = m
+		} else if m.patternLen == best.patternLen {
+			if m.ruleType == RuleAllow && best.ruleType == RuleDisallow {
+				best = m
+			}
+		}
+	}
+
+	return best.ruleType == RuleAllow
+}
+
+func CanCrawl(rawUrl string, domain types.Domain) (bool, error) {
+	rs, err := newRuleSet(domain.Allowed, domain.Disallowed)
+	if err != nil {
+		return false, err
+	}
+
+	return rs.isAllowed(rawUrl), nil
+}
+
+func downloadRobots(domainName string) ([]string, error) {
 	resp, err := http.Get(domainName + "/robots.txt")
 	if err != nil {
 		return make([]string, 0), fmt.Errorf("could not get robots from %v %v", domainName, err)
@@ -36,7 +162,7 @@ func DownloadRobots(domainName string) ([]string, error) {
 	return strings, nil
 }
 
-func RobotsToDomain(domainName string, robotsLines []string) (types.Domain, error) {
+func robotsToDomain(domainName string, robotsLines []string) (types.Domain, error) {
 	domain := types.Domain{}
 	domain.Name = domainName
 
@@ -47,7 +173,10 @@ func RobotsToDomain(domainName string, robotsLines []string) (types.Domain, erro
 
 		if strings.HasPrefix(line, "User-agent: *") {
 			isInUser = true
-		} else if isInUser && strings.HasPrefix(line, "User-agent") {
+		} else if isInUser &&
+			strings.HasPrefix(line, "User-agent") &&
+			len(allow) > 0 &&
+			len(disallow) > 0 {
 			break
 		}
 
@@ -77,4 +206,14 @@ func RobotsToDomain(domainName string, robotsLines []string) (types.Domain, erro
 	domain.LastCrawled = int(time.Now().Unix())
 
 	return domain, nil
+}
+
+// rember the protocol :)))
+func GetRobotsFromDomain(domainName string) (types.Domain, error) {
+	lines, err := downloadRobots(domainName)
+	if err != nil {
+		return types.Domain{}, err
+	}
+
+	return robotsToDomain(domainName, lines)
 }
