@@ -3,9 +3,9 @@ package database
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/redis/go-redis/v9"
-	"os"
 	"strconv"
 	"web_crawler/types"
 )
@@ -18,11 +18,7 @@ type DataBase struct {
 const pageTag = "page"
 const domainTag = "domain"
 
-func (db *DataBase) Connect() error {
-	addr := os.Getenv("REDIS_ADDR")
-	database := os.Getenv("REDIS_DB")
-	password := os.Getenv("REDIS_PASSWORD")
-
+func (db *DataBase) Connect(addr string, database string, password string) error {
 	dbId, err := strconv.Atoi(database)
 	if err != nil {
 		return err
@@ -58,10 +54,8 @@ func (db *DataBase) PageExists(normPageUrl string) (bool, error) {
 }
 
 func (db *DataBase) AddPage(page types.Page) error {
-	h := sha256.New()
-	h.Write([]byte(page.Content))
-
-	checksum := h.Sum(nil)
+	h := sha256.Sum256([]byte(page.Content))
+	checksum := hex.EncodeToString(h[:])
 
 	res, err := db.client.SIsMember(db.ctx, "contenthashes", checksum).Result()
 	if err != nil {
@@ -162,13 +156,22 @@ func (db *DataBase) UpdateDomainLastCrawled(domain string, lastCrawled int) erro
 	return nil
 }
 
+func (db *DataBase) DomainExists(domainName string) (bool, error) {
+	res, err := db.client.Exists(db.ctx, domainTag+"*"+domainName).Result()
+	if err != nil {
+		return false, fmt.Errorf("error when checking if domain: %v exists %v", domainName, err)
+	}
+
+	return res > 0, nil
+}
+
 // Queue stuff
 func (db *DataBase) PushUrl(normUrl string) error {
-	exists, err := db.PageExists(normUrl)
+	exists, err := db.client.Exists(db.ctx, "urlset", normUrl).Result()
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
-	if exists {
+	if exists > 0 {
 		//Silent fail
 		return nil
 	}
@@ -196,10 +199,11 @@ func (db *DataBase) PopUrl() (string, error) {
 		return "", fmt.Errorf("urlqueue could not be popped %v", err)
 	}
 
-	err = db.client.SRem(db.ctx, "urlset", res[1]).Err()
-	if err != nil {
-		return "", fmt.Errorf("could not remove %v from urlset %v", res[1], err)
-	}
+	//Got rid of this because we don't want to crawl a website twice
+	//err = db.client.SRem(db.ctx, "urlset", res[1]).Err()
+	//if err != nil {
+	//	return "", fmt.Errorf("could not remove %v from urlset %v", res[1], err)
+	//}
 
 	return res[1], nil
 }

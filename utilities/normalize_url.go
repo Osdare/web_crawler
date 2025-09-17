@@ -2,6 +2,7 @@ package utilities
 
 import (
 	"fmt"
+	"log"
 	"net/url"
 	"sort"
 	"strings"
@@ -92,11 +93,11 @@ func NormalizeURL(rawURL string) (string, error) {
 	}
 
 	if u.Scheme != "https" && u.Scheme != "http" {
-		return "", fmt.Errorf("url has invalid field 'Scheme'")
+		return "", fmt.Errorf("url has invalid field 'Scheme': %v", rawURL)
 	}
 
 	if u.Host == "" {
-		return "", fmt.Errorf("url has no field 'Host'")
+		return "", fmt.Errorf("url has no field 'Host' %v", rawURL)
 	}
 
 	//Remove redundant port.
@@ -159,6 +160,23 @@ func NormalizeURL(rawURL string) (string, error) {
 	u.Fragment = ""
 
 	return u.String(), nil
+}
+
+func NormalizeUrlSlice(rawUrls []string) []string {
+	normalizedUrls := make([]string, 0)
+
+	for _, rawUrl := range rawUrls {
+		normUrl, err := NormalizeURL(rawUrl)
+		if err != nil {
+			log.Println(err)
+		}
+
+		if normUrl != "" {
+			normalizedUrls = append(normalizedUrls, normUrl)
+		}
+	}
+
+	return normalizedUrls
 }
 
 func removeDotSegments(path string) string {

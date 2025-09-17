@@ -127,13 +127,30 @@ func (rs *RuleSet) isAllowed(rawurl string) bool {
 	return best.ruleType == RuleAllow
 }
 
-func CanCrawl(rawUrl string, domain types.Domain) (bool, error) {
+type Reason int
+
+const (
+	ReasonCrawlDelay Reason = iota
+	ReasonAllowed
+	ReasonDisallowed
+	ReasonFailed
+)
+
+func CanCrawl(rawUrl string, domain types.Domain) (bool, Reason, error) {
 	rs, err := newRuleSet(domain.Allowed, domain.Disallowed)
 	if err != nil {
-		return false, err
+		return false, ReasonFailed, err
 	}
 
-	return rs.isAllowed(rawUrl), nil
+	if !rs.isAllowed(rawUrl) {
+		return false, ReasonDisallowed, nil
+	}
+
+	if int(time.Now().Unix())-domain.CrawlDelay < domain.LastCrawled {
+		return false, ReasonCrawlDelay, nil
+	}
+
+	return true, ReasonAllowed, nil
 }
 
 func downloadRobots(domainName string) ([]string, error) {
@@ -210,10 +227,15 @@ func robotsToDomain(domainName string, robotsLines []string) (types.Domain, erro
 
 // rember the protocol :)))
 func GetRobotsFromDomain(domainName string) (types.Domain, error) {
-	lines, err := downloadRobots(domainName)
+	u, err := url.Parse(domainName)
 	if err != nil {
-		return types.Domain{}, err
+		return types.Domain{Name: u.Host}, fmt.Errorf("could not parse domain: %v Reason: %v", domainName, err)
 	}
 
-	return robotsToDomain(domainName, lines)
+	lines, err := downloadRobots(domainName)
+	if err != nil {
+		return types.Domain{Name: u.Host}, err
+	}
+
+	return robotsToDomain(u.Host, lines)
 }

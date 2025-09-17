@@ -1,7 +1,6 @@
 package database
 
 import (
-	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -9,12 +8,8 @@ import (
 )
 
 func TestAddDomainGetDomain(t *testing.T) {
-	os.Setenv("REDIS_ADDR", "localhost:6379")
-	os.Setenv("REDIS_DB", "0")
-	os.Setenv("REDIS_PROTOCOL", "2")
-
 	db := DataBase{}
-	err := db.Connect()
+	err := db.Connect("localhost:6379", "0", "")
 	if err != nil {
 		t.Errorf("could not connect to database %v", err)
 	}
@@ -53,7 +48,7 @@ func TestUrlQueue(t *testing.T) {
 	}
 
 	db := DataBase{}
-	err := db.Connect()
+	err := db.Connect("localhost:6379", "0", "")
 	if err != nil {
 		t.Errorf("could not connect to db %v", err)
 	}
