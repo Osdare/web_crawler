@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 	"web_crawler/database"
 	"web_crawler/handlers"
 	"web_crawler/parser"
@@ -116,9 +115,9 @@ func CrawlJob(db *database.DataBase) {
 		}
 
 		//create new page
-		nu := strings.Replace(link, u.Scheme+"://", "", 1)
+		//nu := strings.Replace(link, u.Scheme+"://", "", 1)
 		page := types.Page{
-			NormUrl: nu,
+			NormUrl: link,
 			Content: content,
 		}
 		err = db.AddPage(page)
@@ -135,6 +134,7 @@ func CrawlJob(db *database.DataBase) {
 
 		urlsToAdd := utilities.NormalizeUrlSlice(newUrls)
 		for _, newUrl := range urlsToAdd {
+			//log.Printf("attempting to add url: %v to queue\n", newUrl)
 			err = db.PushUrl(newUrl)
 			if err != nil {
 				log.Printf("Could not add url: %v to queue %v\n", newUrl, err)
@@ -142,6 +142,7 @@ func CrawlJob(db *database.DataBase) {
 		}
 
 		ql, err = db.UrlQueueLength()
+		log.Printf("queue length after adding urls: %v\n",ql)
 		if err != nil {
 			log.Printf("ASDFASDF")
 		}

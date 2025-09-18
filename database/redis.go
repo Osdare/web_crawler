@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/redis/go-redis/v9"
+	"log"
 	"strconv"
 	"web_crawler/types"
 )
@@ -167,12 +168,14 @@ func (db *DataBase) DomainExists(domainName string) (bool, error) {
 
 // Queue stuff
 func (db *DataBase) PushUrl(normUrl string) error {
-	exists, err := db.client.Exists(db.ctx, "urlset", normUrl).Result()
+
+	exists, err := db.client.SIsMember(db.ctx, "urlset", normUrl).Result()
 	if err != nil {
 		return fmt.Errorf("%v", err)
 	}
-	if exists > 0 {
-		//Silent fail
+
+	if exists {
+		//log.Printf("found %v results for url: %v", exists, normUrl)
 		return nil
 	}
 
@@ -181,7 +184,7 @@ func (db *DataBase) PushUrl(normUrl string) error {
 		return fmt.Errorf("could not add url %v to set %v", normUrl, err)
 	}
 	if res == 0 {
-		//Silent fail
+		log.Printf("could not add: %v to urlset res: %v", normUrl, res)
 		return nil
 	}
 
