@@ -122,11 +122,7 @@ func CrawlJob(db *database.DataBase) {
 	}
 
 	//normalize urls and put new urls in database
-	newUrls, err := parser.UrlsFromBody(html)
-	if err != nil {
-		log.Printf("Could not parse urls from html %v\n", err)
-		return
-	}
+	newUrls := parser.UrlsFromBody(html)
 
 	urlsToAdd := utilities.NormalizeUrlSlice(newUrls)
 	for _, newUrl := range urlsToAdd {

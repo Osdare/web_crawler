@@ -4,7 +4,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-func UrlsFromBody(body *html.Node) ([]string, error) {
+func UrlsFromBody(body *html.Node) []string {
 	urls := make([]string, 0)
 		
 	var f func(*html.Node)
@@ -22,5 +22,5 @@ func UrlsFromBody(body *html.Node) ([]string, error) {
 	}
 	f(body)
 
-	return urls, nil
+	return urls
 }
