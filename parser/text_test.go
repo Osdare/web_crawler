@@ -15,6 +15,6 @@ func TestWordsFromBody(t *testing.T) {
 		t.Error(err)
 	}
 
-	words := WordsFromBody(h)
+	_, _, _, words := ParseBody("osu.ppy.sh", h)
 	fmt.Println(words)
 }

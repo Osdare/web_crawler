@@ -9,12 +9,13 @@ import (
 )
 
 func TestCrawlAndParse(t *testing.T) {
-	html, _, err := Crawl("https://osu.ppy.sh/users/5070783")
+	url := "https://osu.ppy.sh/users/5070783"
+	html, _, err := Crawl(url)
 	if err != nil {
 		t.Error(err)
 	}
 
-	urls:= parser.UrlsFromBody(html)
+	_, urls, _, _ := parser.ParseBody(url, html)
 
 	fmt.Println(len(urls))
 	normUrls := utilities.NormalizeUrlSlice(urls)

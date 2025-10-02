@@ -5,10 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"log"
 	"strconv"
 	"web_crawler/types"
+	"web_crawler/utilities"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type DataBase struct {
@@ -63,18 +65,17 @@ func (db *DataBase) AddPage(page types.Page) error {
 		return err
 	}
 	if res {
-		//Silent fail
+		log.Printf("content from page %s already exists", page.NormUrl)
 		return nil
 	}
 	db.client.SAdd(db.ctx, "contenthashes", checksum)
 
-	hashFields := []string{
-		"content", page.Content,
-	}
+	//add outlinks
+	db.client.SAdd(db.ctx, "outlinks:"+utilities.HashUrl(page.NormUrl), page.OutLinks)
 
-	err = db.client.HSet(db.ctx, pageTag+":"+page.NormUrl, hashFields).Err()
-	if err != nil {
-		return fmt.Errorf("could not add page to db %v", err)
+	//add backlinks
+	for _, backlink := range page.OutLinks {
+		db.client.SAdd(db.ctx, "backlinks:"+utilities.HashUrl(backlink), page.NormUrl)
 	}
 
 	return nil
@@ -218,4 +219,32 @@ func (db *DataBase) UrlQueueLength() (int64, error) {
 	}
 
 	return res, nil
+}
+
+func (db *DataBase) AddIndex(index types.InvertedIndex) error {
+	for term, posting := range index {
+		err := db.client.ZAdd(db.ctx, "index:"+term, redis.Z{Member: posting.NormUrl, Score: float64(posting.TermFrequency)}).Err()
+		if err != nil {
+			return fmt.Errorf("could not add index to database %v", err)
+		}
+	}
+	return nil
+}
+
+func (db *DataBase) AddDocument(document types.Document) error {
+	err := db.client.HSet(db.ctx, "document:"+utilities.HashUrl(document.NormUrl), "url", document.NormUrl, "title", document.Title, "length", document.Length).Err()
+	if err != nil {
+		return fmt.Errorf("could not add document for url: %v to database %v", document.NormUrl, err)
+	}
+	return nil
+}
+
+func (db *DataBase) AddImages(images []types.Image) error {
+	for _, image := range images {
+		err := db.client.HSet(db.ctx, "image:"+utilities.HashUrl(image.ImageUrl), "pageurl", image.PageUrl, "imageurl", image.ImageUrl, "alt", image.AltText)
+		if err != nil {
+			return fmt.Errorf("could not add image %v to database %v", image.ImageUrl, err)
+		}
+	}
+	return nil
 }

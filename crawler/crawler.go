@@ -110,19 +110,18 @@ func CrawlJob(db *database.DataBase) {
 		return
 	}
 
-	//create new page
-	//nu := strings.Replace(link, u.Scheme+"://", "", 1)
+	//normalize urls and put new urls in database
+	title, newUrls, images, wordMap := parser.ParseBody(link, html)
+
 	page := types.Page{
 		NormUrl: link,
 		Content: content,
+		OutLinks: newUrls,
 	}
 	err = db.AddPage(page)
 	if err != nil {
 		log.Printf("page: %v could not be added to database %v\n", link, err)
 	}
-
-	//normalize urls and put new urls in database
-	newUrls := parser.UrlsFromBody(html)
 
 	urlsToAdd := utilities.NormalizeUrlSlice(newUrls)
 	for _, newUrl := range urlsToAdd {
@@ -132,6 +131,39 @@ func CrawlJob(db *database.DataBase) {
 			log.Printf("Could not add url: %v to queue %v\n", newUrl, err)
 		}
 	}
+
+	//add images
+	err = db.AddImages(images)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	//add document
+	document := types.Document{
+		NormUrl: link,
+		Length: len(wordMap),
+		Title: title,
+	}
+	err = db.AddDocument(document)
+	if err != nil {
+		log.Println(err)
+	}
+
+	//add wordmap/index
+	index := types.InvertedIndex{}
+	for word, score := range wordMap {
+		index[word] = types.Posting{
+			TermFrequency: score,
+			NormUrl:       link,
+		}
+	}
+
+	err = db.AddIndex(index)
+	if err != nil {
+		log.Println(err)
+	}
+
 }
 
 func Start(ctx context.Context, db *database.DataBase) {
