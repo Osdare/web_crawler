@@ -13,17 +13,20 @@ import (
 	"web_crawler/database"
 )
 
-//asdfasdfasdf
+// asdfasdfasdf
 func main() {
 	fmt.Println(":)")
 
 	db := database.DataBase{}
 	db.Connect("localhost:6379", "0", "")
 
-	//seed url
-	err := db.PushUrl("https://osu.ppy.sh/")
-	if err != nil {
-		panic(err)
+	//seed urls should be different urls preferably as many as the amount of crawler workers
+	seeds := []string{"https://en.wikipedia.org/wiki/Osu!", "https://osu.ppy.sh/", "https://www.wikihow.com/Play-osu!", "https://github.com/ppy/osu", "https://www.osu.edu/"}
+	for _, seed := range seeds {
+		err := db.PushUrl(seed)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	//CTRL+C stops the program properly

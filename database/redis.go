@@ -5,8 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"html"
 	"log"
 	"strconv"
+	"strings"
 	"web_crawler/types"
 	"web_crawler/utilities"
 
@@ -82,6 +84,10 @@ func (db *DataBase) AddPage(page types.Page) error {
 }
 
 func (db *DataBase) AddDomain(domain types.Domain) error {
+
+	if domain.CrawlDelay == 0 {
+		domain.CrawlDelay = 1
+	}
 	crawlDelay := strconv.Itoa(domain.CrawlDelay)
 	lastCrawled := strconv.Itoa(domain.LastCrawled)
 
@@ -159,11 +165,10 @@ func (db *DataBase) UpdateDomainLastCrawled(domain string, lastCrawled int) erro
 }
 
 func (db *DataBase) DomainExists(domainName string) (bool, error) {
-	res, err := db.client.Exists(db.ctx, domainTag+"*"+domainName).Result()
+	res, err := db.client.Exists(db.ctx, domainTag+":"+domainName).Result()
 	if err != nil {
 		return false, fmt.Errorf("error when checking if domain: %v exists %v", domainName, err)
 	}
-
 	return res > 0, nil
 }
 
@@ -212,6 +217,14 @@ func (db *DataBase) PopUrl() (string, error) {
 	return res[1], nil
 }
 
+func (db *DataBase) RemoveUrlFromSet(normUrl string) error {
+	err := db.client.SRem(db.ctx, "urlset", normUrl).Err()
+	if err != nil {
+		return fmt.Errorf("could not remove %v from urlset %v", normUrl, err)
+	}
+	return nil
+}
+
 func (db *DataBase) UrlQueueLength() (int64, error) {
 	res, err := db.client.LLen(db.ctx, "urlqueue").Result()
 	if err != nil {
@@ -239,12 +252,27 @@ func (db *DataBase) AddDocument(document types.Document) error {
 	return nil
 }
 
-func (db *DataBase) AddImages(images []types.Image) error {
-	for _, image := range images {
-		err := db.client.HSet(db.ctx, "image:"+utilities.HashUrl(image.ImageUrl), "pageurl", image.PageUrl, "imageurl", image.ImageUrl, "alt", image.AltText)
-		if err != nil {
-			return fmt.Errorf("could not add image %v to database %v", image.ImageUrl, err)
-		}
+func (db *DataBase) AddImage(image types.Image) error {
+
+	imageURL, err := utilities.NormalizeLink(image.PageUrl, image.ImageUrl)
+	if err != nil {
+		return err
+	}
+
+	alt := strings.TrimSpace(html.UnescapeString(image.AltText))
+	if alt == "" {
+		alt = "(no alt text)"
+	}
+
+	err = db.client.HSet(db.ctx, "image:"+utilities.HashUrl(imageURL), map[string]interface{}{
+		"pageUrl":  image.PageUrl,
+		"imageUrl": imageURL,
+		"altText":  alt,
+	}).Err()
+
+	if err != nil {
+		return fmt.Errorf("could not add image %v to database %v", image.ImageUrl, err)
+
 	}
 	return nil
 }

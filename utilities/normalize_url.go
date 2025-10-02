@@ -10,7 +10,6 @@ import (
 
 // Normalize url according to RFC 3986
 func NormalizeURL(rawURL string) (string, error) {
-
 	octetsMap := map[string]string{
 		//A-Z
 		"%41": "A",
@@ -162,11 +161,11 @@ func NormalizeURL(rawURL string) (string, error) {
 	return u.String(), nil
 }
 
-func NormalizeUrlSlice(rawUrls []string) []string {
+func NormalizeUrlSlice(base string, rawUrls []string) []string {
 	normalizedUrls := make([]string, 0)
 
 	for _, rawUrl := range rawUrls {
-		normUrl, err := NormalizeURL(rawUrl)
+		normUrl, err := NormalizeLink(base, rawUrl)
 		if err != nil {
 			log.Println(err)
 		}
@@ -197,4 +196,19 @@ func removeDotSegments(path string) string {
 	}
 
 	return "/" + strings.Join(stack, "/")
+}
+
+func NormalizeLink(base string, link string) (string, error) {
+    baseURL, err := url.Parse(base)
+    if err != nil {
+        return "", err
+    }
+
+    ref, err := url.Parse(link)
+    if err != nil {
+        return "", err
+    }
+
+    absURL := baseURL.ResolveReference(ref)
+    return absURL.String(), nil
 }

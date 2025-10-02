@@ -41,14 +41,12 @@ func Crawl(normUrl string) (*html.Node, string, error) {
 }
 
 func CrawlJob(db *database.DataBase) {
-	fmt.Println("hello :D")
 	//get url from database
 	link, err := db.PopUrl()
 	if err != nil {
 		log.Printf("could not pop url from db %v\n", err)
 		return
 	}
-	log.Printf("Crawling: %v", link)
 
 	u, err := url.Parse(link)
 	if err != nil {
@@ -57,7 +55,6 @@ func CrawlJob(db *database.DataBase) {
 	}
 
 	//check if domain exists and create a new one if not
-
 	domainExists, err := db.DomainExists(u.Host)
 	if err != nil {
 		log.Printf("couldn not check if domain: %v exists %v\n", u.Host, err)
@@ -93,16 +90,21 @@ func CrawlJob(db *database.DataBase) {
 		return
 	}
 	if !canCrawl {
-		log.Printf("not allowed to crawl url: %v in domain: %v\n", link, domain.Name)
 		if reason == handlers.ReasonCrawlDelay {
+			//remove link from set and put back in queue
+			err = db.RemoveUrlFromSet(link)
+			if err != nil {
+				log.Printf("%v\n", err)
+			}
 			err = db.PushUrl(link)
-		}
-		if err != nil {
-			log.Printf("could not push url to queue. Reason: %v\n", err)
+			if err != nil {
+				log.Printf("could not push url to queue. Reason: %v\n", err)
+			}
 		}
 		return
 	}
 
+	log.Printf("Crawling: %v", link)
 	//crawl it
 	html, content, err := Crawl(link)
 	if err != nil {
@@ -114,8 +116,8 @@ func CrawlJob(db *database.DataBase) {
 	title, newUrls, images, wordMap := parser.ParseBody(link, html)
 
 	page := types.Page{
-		NormUrl: link,
-		Content: content,
+		NormUrl:  link,
+		Content:  content,
 		OutLinks: newUrls,
 	}
 	err = db.AddPage(page)
@@ -123,7 +125,7 @@ func CrawlJob(db *database.DataBase) {
 		log.Printf("page: %v could not be added to database %v\n", link, err)
 	}
 
-	urlsToAdd := utilities.NormalizeUrlSlice(newUrls)
+	urlsToAdd := utilities.NormalizeUrlSlice(link, newUrls)
 	for _, newUrl := range urlsToAdd {
 		//log.Printf("attempting to add url: %v to queue\n", newUrl)
 		err = db.PushUrl(newUrl)
@@ -133,17 +135,19 @@ func CrawlJob(db *database.DataBase) {
 	}
 
 	//add images
-	err = db.AddImages(images)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	for _, image := range images {
+		err = db.AddImage(image)
+		if err != nil {
+			log.Println(err)
+			return
+		}
 
+	}
 	//add document
 	document := types.Document{
 		NormUrl: link,
-		Length: len(wordMap),
-		Title: title,
+		Length:  len(wordMap),
+		Title:   title,
 	}
 	err = db.AddDocument(document)
 	if err != nil {
@@ -164,10 +168,18 @@ func CrawlJob(db *database.DataBase) {
 		log.Println(err)
 	}
 
+	err = db.UpdateDomainLastCrawled(domain.Name, utilities.GetTimeInt())
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 func Start(ctx context.Context, db *database.DataBase) {
-	for {
+	qlen, err := db.UrlQueueLength()
+	if err != nil {
+		panic(err)
+	}
+	for qlen > 0 {
 		select {
 		case <-ctx.Done():
 			fmt.Println("Crawler stopping")
@@ -175,5 +187,12 @@ func Start(ctx context.Context, db *database.DataBase) {
 		default:
 			CrawlJob(db)
 		}
+		qlen, err = db.UrlQueueLength()
+		if err != nil {
+			panic(err)
+		}
+	}
+	if qlen == 0 {
+		fmt.Println("queue is empty")
 	}
 }

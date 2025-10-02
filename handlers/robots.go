@@ -146,7 +146,7 @@ func CanCrawl(rawUrl string, domain types.Domain) (bool, Reason, error) {
 		return false, ReasonDisallowed, nil
 	}
 
-	if int(time.Now().Unix())-domain.CrawlDelay < domain.LastCrawled {
+	if int(time.Now().Unix())-domain.LastCrawled < domain.CrawlDelay {
 		return false, ReasonCrawlDelay, nil
 	}
 
