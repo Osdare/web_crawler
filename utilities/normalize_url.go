@@ -1,7 +1,7 @@
 package utilities
 
 import (
-	"log"
+	"fmt"
 	"net/url"
 )
 
@@ -17,16 +17,21 @@ func NormalizeLink(base string, link string) (string, error) {
 	}
 
 	absURL := baseURL.ResolveReference(ref)
+
+	if absURL.Scheme == "" || absURL.Host == "" {
+		return "", nil
+	}
+
 	return absURL.String(), nil
 }
 
-func NormalizeUrlSlice(base string, rawUrls []string) []string {
+func NormalizeUrlSlice(base string, rawUrls []string) ([]string, error) {
 	normalizedUrls := make([]string, 0)
 
 	for _, rawUrl := range rawUrls {
 		normUrl, err := NormalizeLink(base, rawUrl)
 		if err != nil {
-			log.Println(err)
+			return normalizedUrls, fmt.Errorf("could not normalize url: %v %v", rawUrl, err)
 		}
 
 		if normUrl != "" {
@@ -34,5 +39,5 @@ func NormalizeUrlSlice(base string, rawUrls []string) []string {
 		}
 	}
 
-	return normalizedUrls
+	return normalizedUrls, nil
 }

@@ -18,7 +18,10 @@ func TestCrawlAndParse(t *testing.T) {
 	_, urls, _, _ := parser.ParseBody(url, html)
 
 	fmt.Println(len(urls))
-	normUrls := utilities.NormalizeUrlSlice(url, urls)
+	normUrls, err := utilities.NormalizeUrlSlice(url, urls)
+	if err != nil {
+		t.Error(err)
+	}
 	fmt.Println(len(normUrls))
 }
 

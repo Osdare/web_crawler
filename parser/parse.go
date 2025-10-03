@@ -3,6 +3,7 @@ package parser
 import (
 	"slices"
 	"strings"
+	"unicode"
 	"web_crawler/types"
 
 	"github.com/reiver/go-porterstemmer"
@@ -29,7 +30,11 @@ func ParseBody(normUrl string, body *html.Node) (title string, rawUrls []string,
 				word = strings.TrimSpace(word)
 				word = removePunctuation(word)
 				stem := porterstemmer.StemWithoutLowerCasing([]rune(word))
-				if !slices.Contains(stopWords, string(stem)) {
+
+				if len(stem) >= 2 &&
+					len(stem) <= 32 &&
+					!slices.Contains(stopWords, word) &&
+					isAlphanumeric(string(stem)) {
 					wordMap[string(stem)]++
 				}
 			}
@@ -76,4 +81,16 @@ func removePunctuation(s string) string {
 	)
 
 	return replacer.Replace(s)
+}
+
+func isAlphanumeric(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
 }

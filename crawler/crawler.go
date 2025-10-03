@@ -113,7 +113,12 @@ func CrawlJob(db *database.DataBase) {
 	}
 
 	//normalize urls and put new urls in database
-	title, newUrls, images, wordMap := parser.ParseBody(link, html)
+	title, rawUrls, images, wordMap := parser.ParseBody(link, html)
+	newUrls, err := utilities.NormalizeUrlSlice(link, rawUrls)
+	if err !=nil {
+		log.Println(err)
+		return
+	}
 
 	page := types.Page{
 		NormUrl:  link,
@@ -125,8 +130,7 @@ func CrawlJob(db *database.DataBase) {
 		log.Printf("page: %v could not be added to database %v\n", link, err)
 	}
 
-	urlsToAdd := utilities.NormalizeUrlSlice(link, newUrls)
-	for _, newUrl := range urlsToAdd {
+	for _, newUrl := range newUrls {
 		//log.Printf("attempting to add url: %v to queue\n", newUrl)
 		err = db.PushUrl(newUrl)
 		if err != nil {
