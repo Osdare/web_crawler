@@ -64,6 +64,7 @@ func ParseBody(normUrl string, body *html.Node) (title string, rawUrls []string,
 	f(body)
 	return title, rawUrls, images, wordMap
 }
+
 func removePunctuation(s string) string {
 	replacer := strings.NewReplacer(
 		",", "",
