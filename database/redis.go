@@ -5,10 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"html"
 	"log"
 	"strconv"
-	"strings"
 	"web_crawler/types"
 	"web_crawler/utilities"
 
@@ -252,27 +250,21 @@ func (db *DataBase) AddDocument(document types.Document) error {
 	return nil
 }
 
-func (db *DataBase) AddImage(image types.Image) error {
+func (db *DataBase) AddImageIndex(index types.ImageIndex) error {
+	for term, postings := range index {
+		key := "imageindex:" + term
 
-	imageURL, err := utilities.NormalizeLink(image.PageUrl, image.ImageUrl)
-	if err != nil {
-		return err
-	}
+		members := make([]redis.Z, len(postings))
+		for i, posting := range postings {
+			members[i] = redis.Z{
+				Member: posting.ImageUrl,
+				Score:  float64(posting.TermFrequency),
+			}
+		}
 
-	alt := strings.TrimSpace(html.UnescapeString(image.AltText))
-	if alt == "" {
-		alt = "(no alt text)"
-	}
-
-	err = db.client.HSet(db.ctx, "image:"+utilities.HashUrl(imageURL), map[string]interface{}{
-		"pageUrl":  image.PageUrl,
-		"imageUrl": imageURL,
-		"altText":  alt,
-	}).Err()
-
-	if err != nil {
-		return fmt.Errorf("could not add image %v to database %v", image.ImageUrl, err)
-
+		if err := db.client.ZAdd(db.ctx, key, members...).Err(); err != nil {
+			return fmt.Errorf("could not add image index to db %v", err)
+		}
 	}
 	return nil
 }

@@ -115,7 +115,7 @@ func CrawlJob(db *database.DataBase) {
 	//normalize urls and put new urls in database
 	title, rawUrls, images, wordMap := parser.ParseBody(link, html)
 	newUrls, err := utilities.NormalizeUrlSlice(link, rawUrls)
-	if err !=nil {
+	if err != nil {
 		log.Println(err)
 		return
 	}
@@ -138,15 +138,29 @@ func CrawlJob(db *database.DataBase) {
 		}
 	}
 
-	//add images
+	//add image indices
+	imageIndex := types.ImageIndex{}
 	for _, image := range images {
-		err = db.AddImage(image)
-		if err != nil {
-			log.Println(err)
-			return
-		}
+		m := utilities.IndexImage(image)
 
+		for term, frequency := range m {
+			imageUrl, err := utilities.NormalizeLink(link, image.ImageUrl)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			imageIndex[term] = append(imageIndex[term], types.ImagePosting{
+				ImageUrl:      imageUrl,
+				TermFrequency: frequency,
+			})
+		}
 	}
+
+	if err = db.AddImageIndex(imageIndex); err != nil {
+		log.Println(err)
+	}
+
 	//add document
 	document := types.Document{
 		NormUrl: link,
