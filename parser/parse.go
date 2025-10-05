@@ -54,9 +54,15 @@ func ParseBody(normUrl string, body *html.Node) (title string, rawUrls []string,
 						image.ImageUrl = attr.Val
 					}
 					if attr.Key == "alt" {
-						image.AltText = attr.Val
+						image.Text += attr.Val
 					}
 				}
+
+				if fig := findParentFigure(n); fig != nil {
+					caption := findFigcaption(fig)
+					image.Text += " " + caption
+				}
+
 				images = append(images, image)
 			}
 		}
@@ -66,4 +72,30 @@ func ParseBody(normUrl string, body *html.Node) (title string, rawUrls []string,
 	}
 	f(body)
 	return title, rawUrls, images, wordMap
+}
+
+// climb up to parent <figure>
+func findParentFigure(n *html.Node) *html.Node {
+	for p := n.Parent; p != nil; p = p.Parent {
+		if p.Type == html.ElementNode && p.Data == "figure" {
+			return p
+		}
+	}
+	return nil
+}
+
+// recursive search for <figcaption> inside a node
+func findFigcaption(n *html.Node) string {
+	if n.Type == html.ElementNode && n.Data == "figcaption" {
+		if n.FirstChild != nil && n.FirstChild.Type == html.TextNode {
+			return strings.TrimSpace(n.FirstChild.Data)
+		}
+	}
+
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if caption := findFigcaption(c); caption != "" {
+			return caption
+		}
+	}
+	return ""
 }

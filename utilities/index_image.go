@@ -11,7 +11,7 @@ import (
 func IndexImage(image types.Image) map[string]int {
 	m := make(map[string]int)
 
-	w := strings.SplitSeq(image.AltText, " ")
+	w := strings.SplitSeq(image.Text, " ")
 	for word := range w {
 
 		//normalizing and stemming
