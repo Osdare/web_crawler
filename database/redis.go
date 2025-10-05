@@ -248,6 +248,12 @@ func (db *DataBase) AddDocument(document types.Document) error {
 	if err != nil {
 		return fmt.Errorf("could not add document for url: %v to database %v", document.NormUrl, err)
 	}
+
+	err = db.client.Incr(db.ctx, "domain:count").Err()
+	if err != nil {
+		return fmt.Errorf("failed to increment domain:count %v", err)
+	}
+
 	return nil
 }
 
