@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"web_crawler/consts"
 	"web_crawler/types"
 )
 
@@ -146,7 +147,7 @@ func CanCrawl(rawUrl string, domain types.Domain) (bool, Reason, error) {
 		return false, ReasonDisallowed, nil
 	}
 
-	if int(time.Now().Unix())-domain.LastCrawled < domain.CrawlDelay {
+	if time.Now().Unix()-domain.LastCrawled < domain.CrawlDelay {
 		return false, ReasonCrawlDelay, nil
 	}
 
@@ -208,19 +209,19 @@ func robotsToDomain(domainName string, robotsLines []string) (types.Domain, erro
 
 			} else if strings.HasPrefix(strings.ToLower(line), "crawl-delay") {
 
-				cd, err := strconv.Atoi(strings.Split(line, " ")[1])
+				cd, err := strconv.ParseInt(strings.Split(line, " ")[1], 10, 64)
 				if err != nil {
 					return types.Domain{}, fmt.Errorf("could not convert line: %v to int %v", line, err)
 				}
 
-				domain.CrawlDelay = cd
+				domain.CrawlDelay = cd * consts.SEC_NANO
 			}
 		}
 	}
 
 	domain.Allowed = allow
 	domain.Disallowed = disallow
-	domain.LastCrawled = int(time.Now().Unix())
+	domain.LastCrawled = time.Now().Unix()
 
 	return domain, nil
 }

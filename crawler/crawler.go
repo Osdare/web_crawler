@@ -104,6 +104,11 @@ func CrawlJob(db *database.DataBase) {
 		return
 	}
 
+	err = db.UpdateDomainLastCrawled(domain.Name, utilities.GetTimeInt())
+	if err != nil {
+		log.Println(err)
+	}
+
 	log.Printf("Crawling: %v", link)
 
 	//crawl it
@@ -111,10 +116,6 @@ func CrawlJob(db *database.DataBase) {
 	if err != nil {
 		log.Printf("Could not crawl url: %v %v\n", link, err)
 		return
-	}
-	err = db.UpdateDomainLastCrawled(domain.Name, utilities.GetTimeInt())
-	if err != nil {
-		log.Println(err)
 	}
 
 	//normalize urls and put new urls in database

@@ -3,8 +3,9 @@ package database
 import (
 	"reflect"
 	"testing"
-	"time"
+	"web_crawler/consts"
 	"web_crawler/types"
+	"web_crawler/utilities"
 )
 
 func TestAddDomainGetDomain(t *testing.T) {
@@ -16,8 +17,8 @@ func TestAddDomainGetDomain(t *testing.T) {
 
 	domain := types.Domain{
 		Name:        "google.com",
-		CrawlDelay:  10,
-		LastCrawled: int(time.Now().Unix()),
+		CrawlDelay:  10 * consts.SEC_NANO,
+		LastCrawled: utilities.GetTimeInt(),
 		Allowed:     []string{},
 		Disallowed:  []string{},
 	}

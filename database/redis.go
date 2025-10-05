@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"web_crawler/consts"
 	"web_crawler/types"
 	"web_crawler/utilities"
 
@@ -84,10 +85,10 @@ func (db *DataBase) AddPage(page types.Page) error {
 func (db *DataBase) AddDomain(domain types.Domain) error {
 
 	if domain.CrawlDelay == 0 {
-		domain.CrawlDelay = 1
+		domain.CrawlDelay = 1 * consts.SEC_NANO
 	}
-	crawlDelay := strconv.Itoa(domain.CrawlDelay)
-	lastCrawled := strconv.Itoa(domain.LastCrawled)
+	crawlDelay := strconv.FormatInt(domain.CrawlDelay, 10)
+	lastCrawled := strconv.FormatInt(domain.LastCrawled, 10)
 
 	hashFields := []string{
 		"crawldelay", crawlDelay,
@@ -123,12 +124,12 @@ func (db *DataBase) GetDomain(domainName string) (types.Domain, error) {
 		return types.Domain{}, fmt.Errorf("could not get domain %v %v", domainName, err)
 	}
 
-	crawlDelay, err := strconv.Atoi(res["crawldelay"])
+	crawlDelay, err := strconv.ParseInt(res["crawldelay"], 10, 64)
 	if err != nil {
 		return types.Domain{}, fmt.Errorf("crawldelay could not be converted to int %v %v", res["crawldelay"], err)
 	}
 
-	lastCrawled, err := strconv.Atoi(res["lastcrawled"])
+	lastCrawled, err := strconv.ParseInt(res["lastcrawled"], 10, 64)
 	if err != nil {
 		return types.Domain{}, fmt.Errorf("lastcrawled could not be converted to int %v %v", res["lastcrawled"], err)
 	}
@@ -152,7 +153,7 @@ func (db *DataBase) GetDomain(domainName string) (types.Domain, error) {
 	}, nil
 }
 
-func (db *DataBase) UpdateDomainLastCrawled(domain string, lastCrawled int) error {
+func (db *DataBase) UpdateDomainLastCrawled(domain string, lastCrawled int64) error {
 
 	err := db.client.HSet(db.ctx, domainTag+":"+domain, "lastcrawled", lastCrawled).Err()
 	if err != nil {
