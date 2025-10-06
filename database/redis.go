@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"web_crawler/consts"
 	"web_crawler/types"
 	"web_crawler/utilities"
 
@@ -85,7 +84,7 @@ func (db *DataBase) AddPage(page types.Page) error {
 func (db *DataBase) AddDomain(domain types.Domain) error {
 
 	if domain.CrawlDelay == 0 {
-		domain.CrawlDelay = 1 * consts.SEC_NANO
+		domain.CrawlDelay = 1 
 	}
 	crawlDelay := strconv.FormatInt(domain.CrawlDelay, 10)
 	lastCrawled := strconv.FormatInt(domain.LastCrawled, 10)

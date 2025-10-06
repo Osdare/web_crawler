@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/joho/godotenv"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -16,6 +17,10 @@ import (
 // asdfasdfasdf
 func main() {
 	fmt.Println(":)")
+
+	//env
+	godotenv.Load("useragent.env")
+	fmt.Println(os.Getenv("USER_AGENT"))
 
 	db := database.DataBase{}
 	db.Connect("localhost:6379", "0", "")
@@ -40,7 +45,7 @@ func main() {
 		cancel()
 	}()
 
-	numWorkers := 5
+	numWorkers := 2
 	var wg sync.WaitGroup
 	wg.Add(numWorkers)
 

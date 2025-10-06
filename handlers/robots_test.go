@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"testing"
-	"web_crawler/consts"
 	"web_crawler/types"
 )
 
@@ -27,8 +26,8 @@ func TestRobotsToDomain(t *testing.T) {
 func TestCanCrawl(t *testing.T) {
 	domainG := types.Domain{
 		Name:        "https://google.com",
-		CrawlDelay:  1 * consts.SEC_NANO,
-		LastCrawled: 1234 * consts.SEC_NANO,
+		CrawlDelay:  1,
+		LastCrawled: 1234,
 		Allowed:     []string{},
 		Disallowed:  []string{},
 	}

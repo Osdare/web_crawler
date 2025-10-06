@@ -5,11 +5,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"web_crawler/consts"
 	"web_crawler/types"
 )
 
@@ -155,7 +155,20 @@ func CanCrawl(rawUrl string, domain types.Domain) (bool, Reason, error) {
 }
 
 func downloadRobots(domainName string) ([]string, error) {
-	resp, err := http.Get(domainName + "/robots.txt")
+	url := domainName + "/robots.txt"
+	req, err := http.NewRequest("GET", url, nil)
+
+	if err != nil {
+		return nil, fmt.Errorf("error from http request to %v %v", url, err)
+	}
+
+	userAgent := os.Getenv("USER_AGENT")
+
+	req.Header.Set("User-Agent", userAgent)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return make([]string, 0), fmt.Errorf("could not get robots from %v %v", domainName, err)
 	}
@@ -214,7 +227,7 @@ func robotsToDomain(domainName string, robotsLines []string) (types.Domain, erro
 					return types.Domain{}, fmt.Errorf("could not convert line: %v to int %v", line, err)
 				}
 
-				domain.CrawlDelay = cd * consts.SEC_NANO
+				domain.CrawlDelay = cd
 			}
 		}
 	}

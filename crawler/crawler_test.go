@@ -29,7 +29,7 @@ func TestCrawlJob(t *testing.T) {
 	db := database.DataBase{}
 	db.Connect("localhost:6379", "0", "")
 
-	err := db.PushUrl("https://osu.ppy.sh/")
+	err := db.PushUrl("https://en.wikipedia.org/wiki/Osu!")
 	if err != nil {
 		t.Error(err)
 	}

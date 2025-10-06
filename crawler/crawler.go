@@ -4,22 +4,33 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"golang.org/x/net/html"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"time"
 	"web_crawler/database"
 	"web_crawler/handlers"
 	"web_crawler/parser"
 	"web_crawler/types"
 	"web_crawler/utilities"
-
-	"golang.org/x/net/html"
 )
 
 // returns html as node
 func Crawl(normUrl string) (*html.Node, string, error) {
-	resp, err := http.Get(normUrl)
+	userAgent := os.Getenv("USER_AGENT")
+
+	req, err := http.NewRequest("GET", normUrl, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("error from http request to %v %v", normUrl, err)
+	}
+
+	req.Header.Set("User-Agent", userAgent)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("could not get url: %v %v", normUrl, err)
 	}
@@ -41,6 +52,9 @@ func Crawl(normUrl string) (*html.Node, string, error) {
 }
 
 func CrawlJob(db *database.DataBase) {
+
+	start := time.Now()
+
 	//get url from database
 	link, err := db.PopUrl()
 	if err != nil {
@@ -71,6 +85,10 @@ func CrawlJob(db *database.DataBase) {
 	} else {
 		domain, err = handlers.GetRobotsFromDomain(u.Scheme + "://" + u.Host)
 		if err != nil {
+			err = db.AddDomain(domain)
+			if err != nil {
+				log.Printf("bruh moment %v\n", err)
+			}
 			log.Printf("could not get new domain: %v reason: %v", u.Scheme+"://"+u.Host, err)
 			return
 		}
@@ -192,6 +210,9 @@ func CrawlJob(db *database.DataBase) {
 		log.Println(err)
 	}
 
+	end := time.Now()
+
+	log.Printf("time taken ms: %v", end.UnixMilli()-start.UnixMilli())
 }
 
 func Start(ctx context.Context, db *database.DataBase) {
