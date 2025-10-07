@@ -70,8 +70,15 @@ func (db *DataBase) AddPage(page types.Page) error {
 	}
 	db.client.SAdd(db.ctx, "contenthashes", checksum)
 
+	outLinksKey := "outlinks:"+utilities.HashUrl(page.NormUrl)
+
 	//add outlinks
-	db.client.SAdd(db.ctx, "outlinks:"+utilities.HashUrl(page.NormUrl), page.OutLinks)
+	db.client.SAdd(db.ctx, outLinksKey, page.OutLinks)
+
+	//index for outlinks for deterministic fetching
+	if err = db.client.RPush(db.ctx, "outlinks:index", outLinksKey).Err(); err != nil {
+		return fmt.Errorf("error when trying to push %v to outlinks:index %v", outLinksKey, err)
+	}
 
 	//add backlinks
 	for _, backlink := range page.OutLinks {
