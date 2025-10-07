@@ -70,7 +70,7 @@ func (db *DataBase) AddPage(page types.Page) error {
 	}
 	db.client.SAdd(db.ctx, "contenthashes", checksum)
 
-	outLinksKey := "outlinks:"+utilities.HashUrl(page.NormUrl)
+	outLinksKey := "outlinks:" + utilities.HashUrl(page.NormUrl)
 
 	//add outlinks
 	db.client.SAdd(db.ctx, outLinksKey, page.OutLinks)
@@ -82,7 +82,7 @@ func (db *DataBase) AddPage(page types.Page) error {
 
 	//add backlinks
 	for _, backlink := range page.OutLinks {
-		db.client.SAdd(db.ctx, "backlinks:"+utilities.HashUrl(backlink), page.NormUrl)
+		db.client.SAdd(db.ctx, "backlinks:"+utilities.HashUrl(backlink), utilities.HashUrl(page.NormUrl))
 	}
 
 	return nil
@@ -91,7 +91,7 @@ func (db *DataBase) AddPage(page types.Page) error {
 func (db *DataBase) AddDomain(domain types.Domain) error {
 
 	if domain.CrawlDelay == 0 {
-		domain.CrawlDelay = 1 
+		domain.CrawlDelay = 1
 	}
 	crawlDelay := strconv.FormatInt(domain.CrawlDelay, 10)
 	lastCrawled := strconv.FormatInt(domain.LastCrawled, 10)
